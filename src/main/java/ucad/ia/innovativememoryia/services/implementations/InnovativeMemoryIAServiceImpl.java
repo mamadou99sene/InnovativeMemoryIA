@@ -1,4 +1,5 @@
 package ucad.ia.innovativememoryia.services.implementations;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -44,18 +45,21 @@ public class InnovativeMemoryIAServiceImpl implements InnovativeMemoryIAService 
 
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS vector_store (id SERIAL PRIMARY KEY, content TEXT, embedding VECTOR(1536))");
         jdbcTemplate.update("DELETE FROM vector_store");
-        PdfDocumentReaderConfig config=PdfDocumentReaderConfig.defaultConfig();
-        List<Document> allDocuments = new ArrayList<>();
-
-        for (MultipartFile file : files) {
-            PagePdfDocumentReader pagePdfDocumentReader = new PagePdfDocumentReader(file.getResource(), config);
-            List<Document> documents = pagePdfDocumentReader.get();
-            allDocuments.addAll(documents);
-
+        try {
+            PdfDocumentReaderConfig config=PdfDocumentReaderConfig.defaultConfig();
+            List<Document> allDocuments = new ArrayList<>();
+            for (MultipartFile file : files) {
+                PagePdfDocumentReader pagePdfDocumentReader = new PagePdfDocumentReader(file.getResource(), config);
+                List<Document> documents = pagePdfDocumentReader.get();
+                allDocuments.addAll(documents);
+                System.out.println(documents.get(documents.indexOf(file)+1).getContent());
+            }
+            TokenTextSplitter splitter = new TokenTextSplitter();
+            List<Document> chunks = splitter.split(allDocuments);
+            vectorStore.accept(chunks);
+        } catch (Exception e) {
+            return false;
         }
-        TokenTextSplitter splitter = new TokenTextSplitter();
-        List<Document> chunks = splitter.split(allDocuments);
-        //vectorStore.accept(chunks);
         return true;
     }
 
@@ -77,7 +81,8 @@ public class InnovativeMemoryIAServiceImpl implements InnovativeMemoryIAService 
         OpenAiChatModel model=new OpenAiChatModel(openAiApi, OpenAiChatOptions.
                 builder().
                 withModel(OpenAiApi.ChatModel.GPT_4_O).
-                withTemperature(0.2).
+                withTemperature(0.5)
+                .withStreamUsage(true).
                 build());
         ChatResponse chatResponse = model.call(prompt);
         return chatResponse.getResult().getOutput().getContent();
