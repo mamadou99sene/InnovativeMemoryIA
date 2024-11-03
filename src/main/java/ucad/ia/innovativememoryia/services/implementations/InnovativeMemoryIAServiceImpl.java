@@ -32,14 +32,13 @@ public class InnovativeMemoryIAServiceImpl implements InnovativeMemoryIAService 
     private JdbcTemplate jdbcTemplate;
     @Value("${spring.ai.openai.api-key}")
     private String OPENAI_KEY;
-    public InnovativeMemoryIAServiceImpl(VectorStore vectorStore, JdbcTemplate jdbcTemplate) {
-
     private final OpenAiService openAiService;
 
-    public InnovativeMemoryIAServiceImpl(VectorStore vectorStore, JdbcTemplate jdbcTemplate, String apiKey) {
+
+    public InnovativeMemoryIAServiceImpl(VectorStore vectorStore, JdbcTemplate jdbcTemplate, @Value("${spring.ai.openai.api-key}") String openAiKey) {
         this.vectorStore = vectorStore;
         this.jdbcTemplate = jdbcTemplate;
-        this.openAiService = new OpenAiService(apiKey);
+        this.openAiService = new OpenAiService(openAiKey);
     }
 
     @Override
@@ -145,6 +144,7 @@ public class InnovativeMemoryIAServiceImpl implements InnovativeMemoryIAService 
         }
         return convFile;
     }
-
-
 }
+
+
+

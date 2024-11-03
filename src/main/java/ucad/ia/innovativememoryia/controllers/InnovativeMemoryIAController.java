@@ -54,4 +54,24 @@ public class InnovativeMemoryIAController {
                     .body("Erreur lors de la transcription de l'audio.");
         }
     }
+    @PostMapping("/transcribe1")
+    public ResponseEntity<String> transcribeAudio1(
+            @RequestParam("file") MultipartFile file) {
+
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity
+                    .badRequest()
+                    .body("Aucun fichier audio fourni");
+        }
+
+        String result = innovativeMemoryIAService.audio(file);
+
+        if (result.startsWith("Erreur")) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(result);
+        }
+
+        return ResponseEntity.ok(result);
+    }
 }
