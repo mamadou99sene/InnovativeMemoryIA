@@ -13,7 +13,7 @@ import org.springframework.ai.reader.pdf.PagePdfDocumentReader;
 import org.springframework.ai.reader.pdf.config.PdfDocumentReaderConfig;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.core.io.Resource;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -26,7 +26,8 @@ import java.util.Map;
 public class InnovativeMemoryIAServiceImpl implements InnovativeMemoryIAService {
     private VectorStore vectorStore;
     private JdbcTemplate jdbcTemplate;
-
+    @Value("${spring.ai.openai.api-key}")
+    private String OPENAI_KEY;
     public InnovativeMemoryIAServiceImpl(VectorStore vectorStore, JdbcTemplate jdbcTemplate) {
         this.vectorStore = vectorStore;
         this.jdbcTemplate = jdbcTemplate;
@@ -40,10 +41,16 @@ public class InnovativeMemoryIAServiceImpl implements InnovativeMemoryIAService 
         ).size() > 0;
 
         if (!extensionExists) {
-            jdbcTemplate.execute("CREATE EXTENSION vector");
+            jdbcTemplate.execute("CREATE EXTENSION IF NOT EXISTS vector");
         }
-
-        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS vector_store (id SERIAL PRIMARY KEY, content TEXT, embedding VECTOR(1536))");
+        jdbcTemplate.execute("""
+        CREATE TABLE IF NOT EXISTS vector_store (
+          id UUID PRIMARY KEY,
+            content TEXT,
+            embedding VECTOR(1536),
+            metadata JSONB
+        )
+    """);
         jdbcTemplate.update("DELETE FROM vector_store");
         try {
             PdfDocumentReaderConfig config=PdfDocumentReaderConfig.defaultConfig();
@@ -52,15 +59,20 @@ public class InnovativeMemoryIAServiceImpl implements InnovativeMemoryIAService 
                 PagePdfDocumentReader pagePdfDocumentReader = new PagePdfDocumentReader(file.getResource(), config);
                 List<Document> documents = pagePdfDocumentReader.get();
                 allDocuments.addAll(documents);
-                System.out.println(documents.get(documents.indexOf(file)+1).getContent());
+               /* for (Document doc : documents) {
+                    System.out.println(doc.getContent());
+                }*/
+
             }
             TokenTextSplitter splitter = new TokenTextSplitter();
             List<Document> chunks = splitter.split(allDocuments);
             vectorStore.accept(chunks);
+            return true;
         } catch (Exception e) {
+            e.printStackTrace();
+
             return false;
         }
-        return true;
     }
 
     @Override
@@ -77,7 +89,7 @@ public class InnovativeMemoryIAServiceImpl implements InnovativeMemoryIAService 
         Message systemeMessage=new SystemPromptTemplate(systemMessageTemplate).createMessage(Map.of("CONTEXT",documents));
         UserMessage userMessage=new UserMessage(question);
         Prompt prompt=new Prompt(List.of(systemeMessage, userMessage));
-        OpenAiApi openAiApi=new OpenAiApi("");
+        OpenAiApi openAiApi=new OpenAiApi(OPENAI_KEY);
         OpenAiChatModel model=new OpenAiChatModel(openAiApi, OpenAiChatOptions.
                 builder().
                 withModel(OpenAiApi.ChatModel.GPT_4_O).
