@@ -9,4 +9,5 @@ import java.util.List;
 public interface InnovativeMemoryIAService {
     Boolean uploadFile(List<MultipartFile> files);
     String chat(String question);
+     String audio(MultipartFile audioFile);
 }

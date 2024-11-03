@@ -1,5 +1,6 @@
 package ucad.ia.innovativememoryia.services.implementations;
-import org.springframework.ai.chat.client.ChatClient;
+import com.theokanning.openai.audio.CreateTranscriptionRequest;
+import com.theokanning.openai.service.OpenAiService;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -19,6 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import ucad.ia.innovativememoryia.services.InnovativeMemoryIAService;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -29,8 +33,13 @@ public class InnovativeMemoryIAServiceImpl implements InnovativeMemoryIAService 
     @Value("${spring.ai.openai.api-key}")
     private String OPENAI_KEY;
     public InnovativeMemoryIAServiceImpl(VectorStore vectorStore, JdbcTemplate jdbcTemplate) {
+
+    private final OpenAiService openAiService;
+
+    public InnovativeMemoryIAServiceImpl(VectorStore vectorStore, JdbcTemplate jdbcTemplate, String apiKey) {
         this.vectorStore = vectorStore;
         this.jdbcTemplate = jdbcTemplate;
+        this.openAiService = new OpenAiService(apiKey);
     }
 
     @Override
@@ -98,6 +107,43 @@ public class InnovativeMemoryIAServiceImpl implements InnovativeMemoryIAService 
                 build());
         ChatResponse chatResponse = model.call(prompt);
         return chatResponse.getResult().getOutput().getContent();
+    }
+
+    @Override
+    public String audio(MultipartFile audioFile)
+    {
+        // Convertir MultipartFile en File temporaire
+        File convertedFile = null;
+        try {
+            convertedFile = convertMultipartFileToFile(audioFile);
+
+            // Créer la requête de transcription
+            CreateTranscriptionRequest request = new CreateTranscriptionRequest();
+            request.setModel("whisper-1");
+
+            // Appeler l'API OpenAI pour la transcription
+            String response = openAiService.createTranscription(request, convertedFile).getText();
+
+            // Retourner le texte transcrit
+            return response;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Erreur lors de la transcription de l'audio.";
+        } finally {
+            // Supprimer le fichier temporaire après utilisation
+            if (convertedFile != null && convertedFile.exists()) {
+                convertedFile.delete();
+            }
+        }
+    }
+    // Méthode utilitaire pour convertir MultipartFile en File
+    private File convertMultipartFileToFile(MultipartFile file) throws IOException {
+        File convFile = File.createTempFile("audio", ".tmp");
+        try (FileOutputStream fos = new FileOutputStream(convFile)) {
+            fos.write(file.getBytes());
+        }
+        return convFile;
     }
 
 
