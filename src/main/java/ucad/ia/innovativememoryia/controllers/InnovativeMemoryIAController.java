@@ -2,6 +2,7 @@ package ucad.ia.innovativememoryia.controllers;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -10,6 +11,7 @@ import ucad.ia.innovativememoryia.services.InnovativeMemoryIAService;
 import java.util.List;
 
 @RestController
+@CrossOrigin("*")
 @RequestMapping("/api/innovativeMemory")
 public class InnovativeMemoryIAController {
     private ChatClient chatClient;
@@ -37,7 +39,7 @@ public class InnovativeMemoryIAController {
         boolean uploaded = this.innovativeMemoryIAService.uploadFile(files);
         return ResponseEntity.status(HttpStatus.OK).body(uploaded);
     }
-    @GetMapping("/chat")
+    @GetMapping(value = "/chat", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> chat(String question)
     {
         String response = this.innovativeMemoryIAService.chat(question);
@@ -53,25 +55,5 @@ public class InnovativeMemoryIAController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Erreur lors de la transcription de l'audio.");
         }
-    }
-    @PostMapping("/transcribe1")
-    public ResponseEntity<String> transcribeAudio1(
-            @RequestParam("file") MultipartFile file) {
-
-        if (file == null || file.isEmpty()) {
-            return ResponseEntity
-                    .badRequest()
-                    .body("Aucun fichier audio fourni");
-        }
-
-        String result = innovativeMemoryIAService.audio(file);
-
-        if (result.startsWith("Erreur")) {
-            return ResponseEntity
-                    .badRequest()
-                    .body(result);
-        }
-
-        return ResponseEntity.ok(result);
     }
 }

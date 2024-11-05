@@ -108,7 +108,7 @@ public class InnovativeMemoryIAServiceImpl implements InnovativeMemoryIAService 
         return chatResponse.getResult().getOutput().getContent();
     }
 
-    @Override
+/*    @Override
     public String audio(MultipartFile audioFile)
     {
         // Convertir MultipartFile en File temporaire
@@ -143,6 +143,26 @@ public class InnovativeMemoryIAServiceImpl implements InnovativeMemoryIAService 
             fos.write(file.getBytes());
         }
         return convFile;
+    }*/
+
+
+    private String transcribe(File file) throws Exception {
+        CreateTranscriptionRequest request = new CreateTranscriptionRequest();
+        request.setModel("whisper-1");
+        return openAiService.createTranscription(request, file).getText();
+    }
+@Override
+    public String audio(MultipartFile multipartFile) throws Exception {
+        if (multipartFile.isEmpty()) {
+            throw new IllegalArgumentException("Le fichier est vide");
+        }
+        File tempFile = File.createTempFile("audio_", null);
+        try {
+            multipartFile.transferTo(tempFile);
+            return transcribe(tempFile);
+        } finally {
+            tempFile.delete();
+        }
     }
 }
 
