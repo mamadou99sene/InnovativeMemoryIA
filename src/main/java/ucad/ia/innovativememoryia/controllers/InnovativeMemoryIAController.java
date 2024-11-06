@@ -45,15 +45,14 @@ public class InnovativeMemoryIAController {
         String response = this.innovativeMemoryIAService.chat(question);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
-    @PostMapping("/transcribe")
-    public ResponseEntity<String> transcribeAudio(@RequestParam("file") MultipartFile file) {
+
+    @PostMapping(value = "/transcribe", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<String> transcribeAudio(@RequestPart("file") MultipartFile file) {
         try {
-            String transcription = innovativeMemoryIAService.audio(file);
-            return ResponseEntity.ok(transcription);
+            String result = innovativeMemoryIAService.audio(file);
+            return ResponseEntity.ok(result);
         } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Erreur lors de la transcription de l'audio.");
+            return ResponseEntity.badRequest().body("Erreur : " + e.getMessage());
         }
     }
 }
