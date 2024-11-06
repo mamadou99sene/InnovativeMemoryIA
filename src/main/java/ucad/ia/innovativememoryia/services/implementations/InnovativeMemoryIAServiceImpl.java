@@ -24,10 +24,9 @@ import ucad.ia.innovativememoryia.services.InnovativeMemoryIAService;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
+
 @Service
 public class InnovativeMemoryIAServiceImpl implements InnovativeMemoryIAService {
     private VectorStore vectorStore;
@@ -44,24 +43,8 @@ public class InnovativeMemoryIAServiceImpl implements InnovativeMemoryIAService 
     }
 
     @Override
-    public Boolean uploadFile(List<MultipartFile> files) {
-        boolean extensionExists = jdbcTemplate.query(
-                "SELECT 1 FROM pg_extension WHERE extname = 'vector'",
-                (rs, rowNum) -> rs.getInt(1)
-        ).size() > 0;
-
-        if (!extensionExists) {
-            jdbcTemplate.execute("CREATE EXTENSION IF NOT EXISTS vector");
-        }
-        jdbcTemplate.execute("""
-        CREATE TABLE IF NOT EXISTS vector_store (
-          id UUID PRIMARY KEY,
-            content TEXT,
-            embedding VECTOR(1536),
-            metadata JSONB
-        )
-    """);
-        jdbcTemplate.update("DELETE FROM vector_store");
+    public String uploadFile(List<MultipartFile> files) {
+            initAnkanePgVectore(jdbcTemplate);
         try {
             PdfDocumentReaderConfig config=PdfDocumentReaderConfig.defaultConfig();
             List<Document> allDocuments = new ArrayList<>();
@@ -77,11 +60,13 @@ public class InnovativeMemoryIAServiceImpl implements InnovativeMemoryIAService 
             TokenTextSplitter splitter = new TokenTextSplitter();
             List<Document> chunks = splitter.split(allDocuments);
             vectorStore.accept(chunks);
-            return true;
+            String question="generer moi le resumé du document complet en faisant apparaitre les points les plus critiques";
+            String response = chat(question);
+            return response;
+
         } catch (Exception e) {
             e.printStackTrace();
-
-            return false;
+            throw new RuntimeException("Erreur de traiement de la requete");
         }
     }
 
@@ -115,8 +100,6 @@ public class InnovativeMemoryIAServiceImpl implements InnovativeMemoryIAService 
         if (audioFile == null || audioFile.isEmpty()) {
             return "Le fichier audio est vide.";
         }
-
-        // Vérification du format du fichier
         String originalFilename = audioFile.getOriginalFilename();
         if (originalFilename == null) {
             return "Nom de fichier invalide.";
@@ -128,24 +111,23 @@ public class InnovativeMemoryIAServiceImpl implements InnovativeMemoryIAService 
         if (!supportedFormats.contains(extension)) {
             return "Format de fichier non supporté. Formats acceptés : " + String.join(", ", supportedFormats);
         }
-
         File convertedFile = null;
         try {
-            // Conversion du MultipartFile en File
             convertedFile = File.createTempFile("audio", "." + extension);
             try (FileOutputStream fos = new FileOutputStream(convertedFile)) {
                 fos.write(audioFile.getBytes());
             }
-
-            // Créer la requête de transcription
             CreateTranscriptionRequest request = new CreateTranscriptionRequest();
             request.setModel("whisper-1");
-
-            // Appeler l'API OpenAI pour la transcription
             String response = openAiService.createTranscription(request, convertedFile).getText();
-
-            // Retourner le texte transcrit
-            return response;
+            initAnkanePgVectore(jdbcTemplate);
+            List<Document> documents = simpleConvertToDocuments(response);
+            TokenTextSplitter textSplitter=new TokenTextSplitter();
+            List<Document> chunks = textSplitter.split(documents);
+            vectorStore.accept(chunks);
+            String question="generer moi le resumé du document complet en faisant apparaitre les points les plus critiques";
+            String summurized = chat(question);
+            return summurized;
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -157,9 +139,6 @@ public class InnovativeMemoryIAServiceImpl implements InnovativeMemoryIAService 
             }
         }
     }
-
-
-    // Méthode utilitaire pour convertir MultipartFile en File
     private File convertMultipartFileToFile(MultipartFile file) throws IOException {
         File convFile = File.createTempFile("audio", ".tmp");
         try (FileOutputStream fos = new FileOutputStream(convFile)) {
@@ -168,26 +147,33 @@ public class InnovativeMemoryIAServiceImpl implements InnovativeMemoryIAService 
         return convFile;
     }
 
-/*
-    private String transcribe(File file) throws Exception {
-        CreateTranscriptionRequest request = new CreateTranscriptionRequest();
-        request.setModel("whisper-1");
-        return openAiService.createTranscription(request, file).getText();
+    private List<Document> simpleConvertToDocuments(String text) {
+        return Arrays.stream(text.split("\n"))
+                .filter(line -> !line.trim().isEmpty())
+                .map(line -> new Document(line, new HashMap<>()))
+                .collect(Collectors.toList());
     }
-@Override
-    public String audio(MultipartFile multipartFile) throws Exception {
-        if (multipartFile.isEmpty()) {
-            throw new IllegalArgumentException("Le fichier est vide");
+
+    private  void initAnkanePgVectore(JdbcTemplate jdbcTemplate) {
+        boolean extensionExists = jdbcTemplate.query(
+                "SELECT 1 FROM pg_extension WHERE extname = 'vector'",
+                (rs, rowNum) -> rs.getInt(1)
+        ).size() > 0;
+
+        if (!extensionExists) {
+            jdbcTemplate.execute("CREATE EXTENSION IF NOT EXISTS vector");
         }
-        File tempFile = File.createTempFile("audio_", null);
-        try {
-            multipartFile.transferTo(tempFile);
-            return transcribe(tempFile);
-        } finally {
-            tempFile.delete();
-        }
+
+        jdbcTemplate.execute("""
+        CREATE TABLE IF NOT EXISTS vector_store (
+            id UUID PRIMARY KEY,
+            content TEXT,
+            embedding VECTOR(1536),
+            metadata JSONB
+        )
+    """);
+        jdbcTemplate.update("DELETE FROM vector_store");
     }
-    */
 }
 
 

@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.util.List;
 
 public interface InnovativeMemoryIAService {
-    Boolean uploadFile(List<MultipartFile> files);
+    String uploadFile(List<MultipartFile> files);
     String chat(String question);
      String audio(MultipartFile audioFile) throws Exception;
 }

@@ -33,11 +33,11 @@ public class InnovativeMemoryIAController {
         }
     }
     @PostMapping("/upload")
-    public ResponseEntity<Boolean> uploadFile(@RequestParam("files") List<MultipartFile> files)
+    public ResponseEntity<String> uploadFile(@RequestParam("files") List<MultipartFile> files)
     {
         System.out.println("Nombre de fichiers "+files.size());
-        boolean uploaded = this.innovativeMemoryIAService.uploadFile(files);
-        return ResponseEntity.status(HttpStatus.OK).body(uploaded);
+        String response = this.innovativeMemoryIAService.uploadFile(files);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
     @GetMapping(value = "/chat", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> chat(String question)
