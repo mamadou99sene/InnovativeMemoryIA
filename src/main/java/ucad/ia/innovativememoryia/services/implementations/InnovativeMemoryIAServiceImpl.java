@@ -137,19 +137,21 @@ public class InnovativeMemoryIAServiceImpl implements InnovativeMemoryIAService 
                 fos.write(audioFile.getBytes());
             }
 
-            // Configuration de la requête de transcription
+            // Créer la requête de transcription
             CreateTranscriptionRequest request = new CreateTranscriptionRequest();
             request.setModel("whisper-1");
 
-            // Appel de l'API OpenAI avec le fichier converti
-            return openAiService.createTranscription(request, convertedFile).getText();
+            // Appeler l'API OpenAI pour la transcription
+            String response = openAiService.createTranscription(request, convertedFile).getText();
 
-        } catch (IOException e) {
-            return "Erreur lors de la manipulation du fichier : " + e.getMessage();
-        } catch (OpenAiHttpException e) {
-            return "Erreur lors de la transcription : " + e.getMessage();
+            // Retourner le texte transcrit
+            return response;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Erreur lors de la transcription de l'audio.";
         } finally {
-            // Nettoyage du fichier temporaire
+            // Supprimer le fichier temporaire après utilisation
             if (convertedFile != null && convertedFile.exists()) {
                 convertedFile.delete();
             }
