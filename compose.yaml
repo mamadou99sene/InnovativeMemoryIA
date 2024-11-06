@@ -31,16 +31,16 @@ services:
       - './servers.json:/pgadmin4/servers.json'
     ports:
       - '5050:80'
-#  innovativememory:
-#    build:  .
-#    container_name: innovativeMemory
-#    ports:
-#      - '8080:8080'
-#    expose:
-#      - '8080'
-#    healthcheck:
-#      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
-#      interval: 10s
-#    depends_on:
-#      postgres:
-#        condition: service_healthy
+  innovativememory:
+    build:  .
+    container_name: innovativeMemory
+    ports:
+      - '8080:8080'
+    expose:
+      - '8080'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+    depends_on:
+      postgres:
+        condition: service_healthy
