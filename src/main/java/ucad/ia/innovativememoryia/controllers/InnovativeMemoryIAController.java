@@ -32,7 +32,7 @@ public class InnovativeMemoryIAController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to process chat request.");
         }
     }
-    @PostMapping("/upload")
+    @PostMapping(value = "/upload", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> uploadFile(@RequestParam("files") List<MultipartFile> files)
     {
         System.out.println("Nombre de fichiers "+files.size());
@@ -46,7 +46,7 @@ public class InnovativeMemoryIAController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
-    @PostMapping(value = "/transcribe", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/transcribe", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> transcribeAudio(@RequestPart("file") MultipartFile file) {
         try {
             String result = innovativeMemoryIAService.audio(file);
